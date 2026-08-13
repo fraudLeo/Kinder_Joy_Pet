@@ -26,7 +26,8 @@ DEFAULT_CONFIG = {
 def load_config() -> dict:
     if CONFIG_PATH.exists():
         try:
-            data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            # utf-8-sig 兼容带 BOM 的文件（旧版 PowerShell 写入可能带 BOM）
+            data = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
             merged = dict(DEFAULT_CONFIG)
             merged.update(data)
             return merged
@@ -46,11 +47,57 @@ def main() -> int:
     log = get_logger("main")
     log.info("桌宠启动")
 
+    # 崩溃诊断：Qt 断言/致命消息与 Python 崩溃栈写入 logs/crash.log，
+    # 若程序异常退出（如 Qt fail-fast），下次启动可从日志定位原因
+    import faulthandler
+    import os
+    import traceback
+
+    # Python 未捕获异常钩子：任何异常都写入日志（含 Qt 槽内未捕获）
+    def _excepthook(tp, val, tb):
+        log.error("未捕获异常: %s: %s", tp.__name__, val)
+        log.error("".join(traceback.format_exception(tp, val, tb)))
+
+    sys.excepthook = _excepthook
+
+    crash_log = Path(__file__).resolve().parent / "logs" / "crash.log"
+    crash_log.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        # Qt 消息处理器：qWarning/qCritical/qFatal（含 ASSERT 文本）逐条 flush 落盘
+        from PyQt6.QtCore import qInstallMessageHandler
+
+        def _qt_msg_handler(mtype, ctx, msg):
+            try:
+                with open(crash_log, "a", encoding="utf-8", errors="replace") as f:
+                    f.write(f"[QtMsgType {int(mtype)}] {msg}\n")
+            except Exception:  # noqa: BLE001 - 诊断写入失败忽略
+                pass
+
+        qInstallMessageHandler(_qt_msg_handler)
+
+        fd = os.open(crash_log, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
+        os.dup2(fd, 2)  # 重定向 fd 2：Qt C 层的 qWarning/qFatal/ASSERT 一并写入
+        sys.stderr = os.fdopen(fd, "a", encoding="utf-8", errors="replace", buffering=0)
+        faulthandler.enable(sys.stderr)  # 无缓冲：崩溃瞬间内容不丢失
+        faulthandler.register(  # 注册 SIGABRT 信号处理
+            __import__("signal").SIGABRT, file=sys.stderr, all_threads=True
+        )
+    except Exception as exc:  # noqa: BLE001 - 诊断增强失败不影响运行
+        log.warning("崩溃诊断初始化失败: %s", exc)
+
     from PyQt6.QtGui import QIcon  # 延迟导入，避免日志模块循环依赖
 
     app = QApplication(sys.argv)
     app.setApplicationName("DeskPet")
     app.setQuitOnLastWindowClosed(False)  # 关闭窗口后留在托盘
+
+    # 单实例锁：防止多个桌宠并存（多实例会导致"退出后仍有气泡"等混乱）
+    from PyQt6.QtCore import QSharedMemory
+
+    _instance_lock = QSharedMemory("DeskPet_SingleInstance")
+    if not _instance_lock.create(1):
+        log.warning("检测到已有桌宠实例在运行，本实例自动退出（如需重启请先退出旧实例）")
+        return 0
 
     config = load_config()
 
@@ -61,16 +108,80 @@ def main() -> int:
     from app.settings import SettingsDialog
     from functools import partial
 
+    log_viewer = None  # 单实例：重复打开复用同一窗口，避免多窗口并存
+
     def show_log():
-        LogViewerDialog().exec()
+        # 非模态显示：日志窗口打开时桌宠仍可操作（exec 会阻塞主窗口）
+        nonlocal log_viewer
+        from PyQt6.QtCore import Qt
+
+        log.info("打开日志窗口：开始")
+        try:
+            if log_viewer is None:
+                log_viewer = LogViewerDialog()
+                log_viewer.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+                log_viewer.destroyed.connect(lambda: clear_log_viewer())
+                log.info("打开日志窗口：LogViewerDialog 创建成功（新实例）")
+            else:
+                log.info("打开日志窗口：复用已有实例")
+            log_viewer.show()
+            log_viewer.raise_()
+            log.info("打开日志窗口：已显示")
+        except Exception as exc:  # noqa: BLE001 - 日志窗口异常不拖垮桌宠
+            log.exception("打开日志窗口失败: %s", exc)
+
+    def clear_log_viewer():
+        nonlocal log_viewer
+        log_viewer = None
+
+    token_popups = []  # 非模态弹窗持有引用，防止被 GC 销毁
 
     def show_token_status():
+        # 点开时立即触发查询并等待结果（最多 8 秒），非模态显示余额
+        from PyQt6.QtCore import QEventLoop, QTimer as _Qtimer, Qt as _Qt
         from PyQt6.QtWidgets import QMessageBox
 
-        QMessageBox.information(None, "Token 余量", monitor.status_text())
+        def _all_configured_done():
+            configured = [
+                k for k, c in (config.get("providers") or {}).items()
+                if (c or {}).get("api_key")
+            ]
+            return configured and all(k in monitor.results for k in configured)
+
+        monitor.check_all()  # 异步查询所有已配置厂商
+        loop = QEventLoop()
+        monitor.status_changed.connect(lambda: loop.quit() if _all_configured_done() else None)
+        _Qtimer.singleShot(8000, loop.quit)  # 兜底超时
+        loop.exec()
+
+        popup = QMessageBox()
+        popup.setWindowTitle("Token 余量")
+        popup.setText(monitor.status_text())
+        popup.setStandardButtons(QMessageBox.StandardButton.Ok)
+        popup.setAttribute(_Qt.WidgetAttribute.WA_DeleteOnClose)
+        popup.destroyed.connect(
+            lambda: token_popups.remove(popup) if popup in token_popups else None
+        )
+        token_popups.append(popup)
+        popup.show()  # 非模态：桌宠保持可操作
 
     def show_settings():
-        SettingsDialog(config, save_config_and_refresh, pet).exec()
+        # 非模态单实例设置窗口：打开时桌宠仍可拖动
+        nonlocal settings_window
+        from PyQt6.QtCore import Qt as _Qt
+
+        if settings_window is None:
+            settings_window = SettingsDialog(config, save_config_and_refresh, pet)
+            settings_window.setAttribute(_Qt.WidgetAttribute.WA_DeleteOnClose)
+            settings_window.destroyed.connect(clear_settings_window)
+        settings_window.show()
+        settings_window.raise_()
+
+    def clear_settings_window():
+        nonlocal settings_window
+        settings_window = None
+
+    settings_window = None
 
     note_window = None
 
@@ -132,7 +243,7 @@ def main() -> int:
     )
     pet.show()
     bubbles.set_anchor(pet.geometry())
-    bubbles.show()  # 气泡窗口必须显示，否则消息只进隐藏窗口
+    # 气泡窗口初始隐藏，收到消息时自动显示（见 bubbles.push_message）
     log.info("桌宠主窗口已显示")
 
     monitor = TokenMonitor(config, parent=pet)

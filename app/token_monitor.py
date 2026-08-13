@@ -82,7 +82,16 @@ class TokenMonitor(QObject):
         lines = []
         for key in sorted(self.results):
             lines.append(self.results[key].summary())
-        return "\n".join(lines) if lines else "未配置 Token 厂商（设置中填写 API Key）"
+        if lines:
+            return "\n".join(lines)
+        # 已配置厂商但尚无查询结果（如刚填 Key / 轮询未到）→ 提示查询中
+        configured = [
+            k for k, cfg in (self.config.get("providers") or {}).items()
+            if (cfg or {}).get("api_key")
+        ]
+        if configured:
+            return "正在查询余额…（刚配置的 Key 已触发查询，请稍候）"
+        return "未配置 Token 厂商（设置中填写 API Key）"
 
     # ---------- 内部 ----------
     def _on_result(self, key: str, info: BalanceInfo) -> None:

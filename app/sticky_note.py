@@ -163,8 +163,10 @@ class NoteWindow(QWidget):
         note_bar = QVBoxLayout()
         note_btns = QHBoxLayout()
         add_note_btn = QPushButton("+ 笔记", self)
+        rename_note_btn = QPushButton("重命名", self)
         del_note_btn = QPushButton("删除笔记", self)
         note_btns.addWidget(add_note_btn)
+        note_btns.addWidget(rename_note_btn)
         note_btns.addWidget(del_note_btn)
         note_btns.addStretch(1)
         note_bar.addLayout(note_btns)
@@ -186,6 +188,7 @@ class NoteWindow(QWidget):
         rename_btn.clicked.connect(self._rename_folder)
         del_folder_btn.clicked.connect(self._del_folder)
         add_note_btn.clicked.connect(self._add_note)
+        rename_note_btn.clicked.connect(self._rename_note)
         del_note_btn.clicked.connect(self._del_note)
 
         self._save_timer = QTimer(self)
@@ -259,7 +262,9 @@ class NoteWindow(QWidget):
         if note is None:
             return False
         note["text"] = self.editor.toPlainText()
-        note["title"] = _first_line(note["text"])
+        # 只有未手动重命名的笔记才自动取首行作标题
+        if not note.get("manual_title"):
+            note["title"] = _first_line(note["text"])
         if row is not None and row < self.note_list.count():
             self.note_list.item(row).setText(note["title"])
         self.save_cb()
@@ -340,6 +345,24 @@ class NoteWindow(QWidget):
         self.editor.setFocus()
         self.save_cb()
         log.info("新建笔记")
+
+    def _rename_note(self) -> None:
+        note = self._note_at(self._prev_folder, self._prev_note_row)
+        if note is None:
+            return
+        title, ok = QInputDialog.getText(
+            self, "重命名笔记", "新标题：", text=note.get("title", "")
+        )
+        title = title.strip() if ok else ""
+        if not title:
+            return
+        note["title"] = title
+        note["manual_title"] = True  # 手动重命名后不再被首行自动覆盖
+        row = self.note_list.currentRow()
+        if row >= 0:
+            self.note_list.item(row).setText(title)
+        self.save_cb()
+        log.info("重命名笔记: %s", title)
 
     def _del_note(self) -> None:
         folder = self.current_folder()

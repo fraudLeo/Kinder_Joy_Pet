@@ -2,10 +2,11 @@
 
 功能入口通过 callbacks 注入，避免与具体业务模块强耦合。
 """
+import math
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QTimer, QPoint
-from PyQt6.QtGui import QAction, QColor, QIcon, QMovie, QPainter, QPixmap
+from PyQt6.QtCore import Qt, QTimer, QPoint, QPointF
+from PyQt6.QtGui import QAction, QColor, QIcon, QMovie, QPainter, QPixmap, QCursor
 from PyQt6.QtWidgets import QApplication, QLabel, QMenu, QSystemTrayIcon, QWidget
 
 from .logger import get_logger
@@ -35,7 +36,6 @@ class DesktopPet(QWidget):
         self.config = config
         self.callbacks = callbacks or {}
         self._drag_offset: QPoint | None = None
-        self._frame = 0
         self._menu: QMenu | None = None
 
         self._build_window()
@@ -69,43 +69,93 @@ class DesktopPet(QWidget):
             log.info("加载 GIF 动画: %s", gif)
         else:
             self.movie = None
-            self._timer = QTimer(self)
-            self._timer.timeout.connect(self._draw_placeholder)
-            self._timer.start(700)
+            self._eye_offset = QPointF(0.0, 0.0)
+            self._blink_tick = 0  # 眨眼状态机：0=睁眼，1..3=眨眼过程
+            self._timer = QTimer(self)  # 眨眼 tick（100ms，3 秒一周期）
+            self._timer.timeout.connect(self._tick_blink)
+            self._timer.start(100)
+            self._follow_timer = QTimer(self)  # 眼球跟随鼠标
+            self._follow_timer.timeout.connect(self._update_eye_follow)
+            self._follow_timer.start(33)  # ~30fps
             self._draw_placeholder()
             if gif:
                 log.warning("指定的 GIF 不存在，使用内置占位动画: %s", gif)
             else:
                 log.info("未配置 GIF，使用内置占位动画")
 
+    # ---------- 眨眼 ----------
+    def _tick_blink(self) -> None:
+        """眨眼状态机：每 100ms 走一拍，30 拍（3 秒）一周期，开头 3 拍闭眼。"""
+        self._blink_tick = (self._blink_tick + 1) % 30
+        self._draw_placeholder()
+
+    # ---------- 眼球跟随 ----------
+    def _compute_eye_offset(self, cursor_x: int, cursor_y: int, max_offset: float = 7.0) -> QPointF:
+        """鼠标位置 -> 瞳孔偏移（限制在 max_offset 像素内，200px 基准）。"""
+        center = self.frameGeometry().center()
+        dx = cursor_x - center.x()
+        dy = cursor_y - center.y()
+        dist = math.hypot(dx, dy)
+        if dist <= 0:
+            return QPointF(0.0, 0.0)
+        scale = min(max_offset / dist, 1.0)
+        return QPointF(dx * scale, dy * scale)
+
+    def _update_eye_follow(self) -> None:
+        pos = QCursor.pos()
+        self._eye_offset = self._compute_eye_offset(pos.x(), pos.y(), max_offset=4.0)
+        self._draw_placeholder()
+
     def _draw_placeholder(self) -> None:
-        """绘制一个简单像素脸，帧间眨眼，保证无素材也能看到桌宠在动。"""
+        """程序化绘制卡比风格形象：粉球身体、大眼睛（跟随鼠标）、腮红、小嘴、小脚。"""
         size = self.width()
         pix = QPixmap(size, size)
         pix.fill(Qt.GlobalColor.transparent)
         p = QPainter(pix)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        m = size / 200.0  # 以 200px 为基准缩放
+        s = size / 200.0  # 以 200px 为基准缩放
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(255, 200, 87))
-        p.drawEllipse(int(16 * m), int(20 * m), int(168 * m), int(160 * m))
 
-        blink = self._frame % 4 == 3  # 每 4 帧眨一次眼
-        p.setBrush(QColor(60, 40, 20))
+        # 小脚（在身体下层，伸出底缘）——参考图深粉 (235,124,152)
+        p.setBrush(QColor(235, 124, 152))
+        p.drawEllipse(int(66 * s), int(176 * s), int(26 * s), int(16 * s))
+        p.drawEllipse(int(108 * s), int(176 * s), int(26 * s), int(16 * s))
+
+        # 身体：粉色大圆——参考图浅粉 (240,205,205)
+        p.setBrush(QColor(240, 205, 205))
+        p.drawEllipse(int(16 * s), int(18 * s), int(168 * s), int(168 * s))
+
+        # 腮红（左右脸颊）
+        p.setBrush(QColor(235, 150, 160, 180))
+        p.drawEllipse(int(42 * s), int(106 * s), int(16 * s), int(10 * s))
+        p.drawEllipse(int(142 * s), int(106 * s), int(16 * s), int(10 * s))
+
+        # 嘴：小椭圆
+        p.setBrush(QColor(225, 105, 135))
+        p.drawEllipse(int(95 * s), int(110 * s), int(10 * s), int(6 * s))
+
+        off = self._eye_offset  # 眼珠偏移（跟随鼠标，最大 ~4px）
+        blink = 1 <= self._blink_tick <= 3  # 眨眼状态机：每周期开头 3 拍闭眼
         if blink:
-            p.drawRoundedRect(int(40 * m), int(72 * m), int(44 * m), int(8 * m), 4, 4)
-            p.drawRoundedRect(int(116 * m), int(72 * m), int(44 * m), int(8 * m), 4, 4)
+            # 眨眼：闭眼横条（深粉）
+            p.setBrush(QColor(225, 105, 135))
+            p.drawRoundedRect(int(52 * s), int(75 * s), int(30 * s), int(6 * s), 3, 3)
+            p.drawRoundedRect(int(118 * s), int(75 * s), int(30 * s), int(6 * s), 3, 3)
         else:
-            p.drawEllipse(int(42 * m), int(62 * m), int(22 * m), int(26 * m))
-            p.drawEllipse(int(118 * m), int(62 * m), int(22 * m), int(26 * m))
+            # 大眼睛：黑色眼珠（跟随鼠标偏移）
+            er = 15.0 * s  # 眼珠半径
+            eye_l = (67.0 + off.x(), 78.0 + off.y())  # 左眼中心
+            eye_r = (133.0 + off.x(), 78.0 + off.y())  # 右眼中心
+            p.setBrush(QColor(45, 40, 55))
+            p.drawEllipse(int(eye_l[0] * s - er), int(eye_l[1] * s - er), int(2 * er), int(2 * er))
+            p.drawEllipse(int(eye_r[0] * s - er), int(eye_r[1] * s - er), int(2 * er), int(2 * er))
+            # 高光（眼珠左上角）
+            p.setBrush(QColor(255, 255, 255))
+            p.drawEllipse(int(59 * s), int(70 * s), int(9 * s), int(9 * s))
+            p.drawEllipse(int(125 * s), int(70 * s), int(9 * s), int(9 * s))
 
-        p.setBrush(QColor(240, 140, 140))
-        p.drawEllipse(int(80 * m), int(118 * m), int(40 * m), int(22 * m))
         p.end()
-
         self.label.setPixmap(pix)
-        self._frame += 1
 
     # ---------- 拖拽 ----------
     def mousePressEvent(self, event) -> None:

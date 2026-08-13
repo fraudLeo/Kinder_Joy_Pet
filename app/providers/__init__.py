@@ -67,3 +67,8 @@ def register(cls: type[BalanceProvider]) -> type[BalanceProvider]:
     """把厂商插件注册进 REGISTRY（key -> 类）。"""
     REGISTRY[cls.key] = cls
     return cls
+
+
+# 导入各厂商插件触发 @register 注册（此前未导入导致 REGISTRY 恒为空，
+# 设置面板无法显示厂商输入框）。必须放在 register 定义之后以避免循环导入。
+from . import deepseek, moonshot, openrouter  # noqa: E402,F401

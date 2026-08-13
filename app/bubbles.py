@@ -7,7 +7,7 @@
 """
 import html
 
-from PyQt6.QtCore import QEasingCurve, QParallelAnimationGroup, QPoint, QPropertyAnimation, QRect, Qt, QTimer
+from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QGraphicsOpacityEffect
 
@@ -80,6 +80,8 @@ class BubbleWindow(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # 透明区域不拦截鼠标（卡片作为子控件仍可点击）
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setWindowTitle("消息气泡")
         self.cards: list[BubbleCard] = []  # 旧 -> 新
         self._expiring: set[BubbleCard] = set()  # 正在淡出中的卡片（去重）
@@ -99,6 +101,8 @@ class BubbleWindow(QWidget):
         card.show()
         card.opacity.setOpacity(0.0)
         self.cards.append(card)
+        if not self.isVisible():
+            self.show()  # 空队列时窗口隐藏，收到消息再显示
         self._relayout(animate=True, entering=card)
         QTimer.singleShot(self.TIMEOUT_MS, lambda: self.expire_card(card))
         # 超出上限：最老的正常淡出；若已在淡出中则立即完成移除（防快速连续消息累积）
@@ -111,16 +115,20 @@ class BubbleWindow(QWidget):
         log.info("气泡消息 [%s] %s", msg.get("sender"), msg.get("content"))
 
     def expire_card(self, card: BubbleCard) -> None:
-        """淡出并移除卡片（同一卡片只触发一次）。"""
+        """淡出并移除卡片（同一卡片只触发一次）。
+
+        动画 parent 设为卡片本身：卡片被挤出/删除时动画随卡片安全销毁，
+        避免动画对已删除对象操作触发 Qt fail-fast (0xc0000409)。
+        """
         if card not in self.cards or card in self._expiring:
             return
         self._expiring.add(card)
-        fade = QPropertyAnimation(card.opacity, b"opacity", self)
+        fade = QPropertyAnimation(card.opacity, b"opacity", card)
         fade.setDuration(350)
         fade.setStartValue(card.opacity.opacity())
         fade.setEndValue(0.0)
         fade.finished.connect(lambda: self._remove_card(card))
-        fade.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        fade.start()
 
     # ---------- 布局与动画 ----------
     def _remove_card(self, card: BubbleCard) -> None:
@@ -129,7 +137,10 @@ class BubbleWindow(QWidget):
         self.cards.remove(card)
         self._expiring.discard(card)
         card.deleteLater()
-        self._relayout(animate=True)
+        if not self.cards:
+            self.hide()  # 队列清空后隐藏，避免常驻透明窗口
+        else:
+            self._relayout(animate=True)
 
     def _relayout(self, animate: bool = True, entering: BubbleCard | None = None) -> None:
         """从底部往上排布卡片；animate=True 时做果冻弹性动画。"""
@@ -149,28 +160,27 @@ class BubbleWindow(QWidget):
             targets[id(c)] = cursor
             cursor -= self.CARD_GAP
 
-        group = QParallelAnimationGroup(self)
+        # 每个卡片的动画 parent 设为卡片本身：卡片被删除时动画随卡片安全销毁，
+        # 避免 QParallelAnimationGroup 在目标对象删除后继续运行触发 fail-fast。
         for c in self.cards:
             ty = targets[id(c)]
             if not animate:
                 c.move(0, ty)
                 continue
-            anim = QPropertyAnimation(c, b"geometry", group)
+            anim = QPropertyAnimation(c, b"geometry", c)
             anim.setDuration(240)
             anim.setEasingCurve(QEasingCurve.Type.OutBounce)  # 果冻弹性
             if c is entering:
                 anim.setStartValue(QRect(0, total_h, c.width(), c.height()))
-                fade = QPropertyAnimation(c.opacity, b"opacity", group)
+                fade = QPropertyAnimation(c.opacity, b"opacity", c)
                 fade.setDuration(200)
                 fade.setStartValue(0.0)
                 fade.setEndValue(1.0)
-                group.addAnimation(fade)
+                fade.start()
             else:
                 anim.setStartValue(c.geometry())
             anim.setEndValue(QRect(0, ty, c.width(), c.height()))
-            group.addAnimation(anim)
-        if animate:
-            group.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+            anim.start()
 
         self._apply_anchor()
 
