@@ -1,15 +1,39 @@
 # DeskPet 桌宠
 
-Windows 桌宠：透明置顶动画宠物，集成**快捷启动应用、Token 余量监控预警、便利签、日志系统**。基于 PyQt6，实测内存占用约 45-50MB。
+Windows 桌面宠物。本项目的核心方向是 **Everything 功能扩展**：把本地文件秒级搜索能力接入桌宠，实现"搜文件 → 一键打开"的快捷体验，同时保留桌宠的常用功能。
 
-## 功能
+## 🚀 Everything 功能扩展（核心方向）
 
-- 🐾 **桌宠**：透明置顶窗口，支持 GIF 动画（无素材时内置眨眼占位动画），左键拖拽，右键菜单，系统托盘，关窗隐藏到托盘
-- 🚀 **快捷启动**：右键菜单「快速启动」一键打开指定应用，设置面板管理
-- 🔋 **Token 余量监控**：后台轮询多厂商余额（DeepSeek / OpenRouter / Kimi-Moonshot，插件式可扩展），低于阈值弹托盘预警（去重，恢复后重置）
-- 📝 **便利签**：左侧文件夹列表 + 右侧笔记列表/文本框，支持新建/重命名/删除文件夹和笔记，编辑防抖自动保存，重启后恢复
-- 💬 **消息气泡**：微信消息提醒（演示：右键菜单「模拟微信消息」开关触发假消息），气泡显示发送者+内容，多条消息果冻弹性上浮、最新在最底，超时淡出，跟随桌宠；接真实微信见 `app/wechat_monitor.py` 的 WcferrySource
-- 📋 **日志系统**：滚动文件日志（`logs/deskpet.log`，2MB 轮转）+ 界面查看器
+本仓库用于开发桌宠与 [Everything](https://www.voidtools.com/)（Windows 本地文件秒搜工具）的集成扩展。
+
+### 原理
+
+Everything 平时把 NTFS 文件名维护成内存索引（读 MFT 建索引 + 监听 USN Journal 增量更新），搜索只是内存过滤。桌宠通过其命令行接口（`es.exe`）或 HTTP 服务器接口查询，即可获得毫秒级全盘文件搜索。
+
+### 依赖
+
+| 组件 | 状态 | 说明 |
+|---|---|---|
+| Everything | ✅ 已安装 | `D:\OtherSoftWare\search\Everything\Everything.exe`（1.4.1），需保持运行 |
+| `es.exe`（命令行版） | ⏳ 待放置 | 官方下载：`https://www.voidtools.com/downloads/` → ES 命令行版，解压后放至 Everything 目录 |
+| HTTP 服务器接口 | 🔀 备选 | Everything 选项 → HTTP 服务器（`allow_http_server=1` 已允许，需手动启用并重启） |
+
+### 规划功能
+
+- [ ] 桌宠右键菜单「搜文件」入口
+- [ ] 关键字秒级搜索（调 `es.exe`，结果以完整路径返回）
+- [ ] 结果列表窗口（非模态，双击/回车用默认程序打开）
+- [ ] 与「快捷启动」联动（搜索即打开）
+- [ ] 搜索历史与常用文件置顶
+
+## 🐾 桌宠已有功能
+
+- **卡比形象**：程序化绘制（粉色圆球、大眼跟随鼠标、眨眼动画）
+- **消息气泡**：微信消息提醒演示（模拟源），果冻弹性上浮、跟随桌宠
+- **Token 余量监控**：DeepSeek / OpenRouter / Kimi 多厂商余额 + 阈值预警
+- **便利签**：左侧文件夹 + 右侧笔记，支持重命名、持久化
+- **快捷启动**：右键菜单一键打开指定应用
+- **实时日志**：非模态查看器，自动刷新，单实例
 
 ## 运行
 
@@ -19,53 +43,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## 配置
-
-所有配置存于 `config.json`（运行后也可在「设置」界面修改，自动写回）：
-
-```jsonc
-{
-  "pet_size": 200,                // 桌宠尺寸
-  "gif_path": "",                 // 本地 .gif 路径；留空用内置占位动画
-  "token_check_interval_sec": 300,// 余额轮询间隔（秒）
-  "token_warn_percent": 20,       // 余量低于该百分比时预警
-  "providers": {                  // Token 厂商 API Key（设置界面填写）
-    "deepseek": { "api_key": "" },
-    "openrouter": { "api_key": "" },
-    "moonshot": { "api_key": "" }
-  },
-  "launcher": {                   // 快捷启动应用
-    "记事本": { "path": "notepad.exe", "args": "" }
-  },
-  "note_folders": {}              // 便利签数据（左侧文件夹 + 右侧笔记，自动管理）
-}
-```
-
-## 扩展厂商
-
-新增 `app/providers/xxx.py`，继承 `BalanceProvider` 并实现 `fetch()`，用 `@register` 注册即可，无需改动其他代码。
-
-## 打包
-
-```powershell
-pip install pyinstaller
-pyinstaller -F -w --name DeskPet main.py
-```
-
 ## 项目结构
 
 ```
 deskpet/
 ├── main.py               # 入口：装配各模块
-├── config.json           # 配置
+├── config.json           # 配置（含 everything_es_path 预留）
 └── app/
-    ├── pet.py            # 桌宠主窗口（动画/拖拽/菜单/托盘）
+    ├── pet.py            # 桌宠主窗口（卡比动画/拖拽/菜单/托盘）
+    ├── bubbles.py        # 消息气泡
+    ├── wechat_monitor.py # 消息源（DummySource / WcferrySource 骨架）
     ├── token_monitor.py  # 余额轮询 + 预警
     ├── providers/        # 余额厂商插件
     ├── launcher.py       # 快捷启动
-    ├── sticky_note.py    # 便利签（文件夹 + 笔记）
-    ├── bubbles.py        # 消息气泡（果冻上浮动画，跟随桌宠）
-    ├── wechat_monitor.py # 消息源（DummySource 模拟 / WcferrySource 骨架）
+    ├── sticky_note.py    # 便利签
     ├── settings.py       # 设置对话框
     └── logger.py         # 日志系统
 ```

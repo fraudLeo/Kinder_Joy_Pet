@@ -134,6 +134,25 @@ def main() -> int:
         nonlocal log_viewer
         log_viewer = None
 
+    search_window = None  # Everything 搜索窗口（单实例）
+
+    def open_search():
+        nonlocal search_window
+        from app.everything import SearchDialog
+        from PyQt6.QtCore import Qt as _Qt
+
+        if search_window is None:
+            search_window = SearchDialog()
+            search_window.setAttribute(_Qt.WidgetAttribute.WA_DeleteOnClose)
+            search_window.destroyed.connect(clear_search_window)
+        search_window.show()
+        search_window.raise_()
+        search_window.input_edit.setFocus()
+
+    def clear_search_window():
+        nonlocal search_window
+        search_window = None
+
     token_popups = []  # 非模态弹窗持有引用，防止被 GC 销毁
 
     def show_token_status():
@@ -231,6 +250,7 @@ def main() -> int:
         config,
         callbacks={
             "launcher_items": launcher_items,
+            "open_search": open_search,
             "token_status": show_token_status,
             "open_note": open_note,
             "open_log": show_log,
