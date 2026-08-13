@@ -50,9 +50,9 @@ class DesktopPet(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setWindowTitle("桌宠")
+        self.setWindowTitle("super Kindar")
 
-        size = int(self.config.get("pet_size", 200))
+        size = int(self.config.get("pet_size", 100))
         self.setFixedSize(size, size)
         self.label = QLabel(self)
         self.label.setGeometry(0, 0, size, size)
@@ -70,6 +70,7 @@ class DesktopPet(QWidget):
         else:
             self.movie = None
             self._eye_offset = QPointF(0.0, 0.0)
+            self._mouth_open = 0.0  # 张嘴程度 0~1（鼠标越近越大）
             self._blink_tick = 0  # 眨眼状态机：0=睁眼，1..3=眨眼过程
             self._timer = QTimer(self)  # 眨眼 tick（100ms，3 秒一周期）
             self._timer.timeout.connect(self._tick_blink)
@@ -90,6 +91,15 @@ class DesktopPet(QWidget):
         self._draw_placeholder()
 
     # ---------- 眼球跟随 ----------
+    @staticmethod
+    def _mouth_target(dist: float, near: float = 60.0, far: float = 350.0) -> float:
+        """鼠标距离 -> 张嘴程度 0~1：far 外闭嘴，near 内最大张嘴，线性过渡。"""
+        if dist <= near:
+            return 1.0
+        if dist >= far:
+            return 0.0
+        return 1.0 - (dist - near) / (far - near)
+
     def _compute_eye_offset(self, cursor_x: int, cursor_y: int, max_offset: float = 7.0) -> QPointF:
         """鼠标位置 -> 瞳孔偏移（限制在 max_offset 像素内，200px 基准）。"""
         center = self.frameGeometry().center()
@@ -103,11 +113,16 @@ class DesktopPet(QWidget):
 
     def _update_eye_follow(self) -> None:
         pos = QCursor.pos()
+        center = self.frameGeometry().center()
+        dist = math.hypot(pos.x() - center.x(), pos.y() - center.y())
+        # 张嘴程度：越近越大，逐帧平滑过渡
+        target = self._mouth_target(dist)
+        self._mouth_open += (target - self._mouth_open) * 0.25
         self._eye_offset = self._compute_eye_offset(pos.x(), pos.y(), max_offset=4.0)
         self._draw_placeholder()
 
     def _draw_placeholder(self) -> None:
-        """程序化绘制卡比风格形象：粉球身体、大眼睛（跟随鼠标）、腮红、小嘴、小脚。"""
+        """按参考图绘制卡比：粉球身体、两只小手、大脚、竖长黑眼（跟随鼠标）、小嘴。"""
         size = self.width()
         pix = QPixmap(size, size)
         pix.fill(Qt.GlobalColor.transparent)
@@ -116,43 +131,57 @@ class DesktopPet(QWidget):
         s = size / 200.0  # 以 200px 为基准缩放
         p.setPen(Qt.PenStyle.NoPen)
 
-        # 小脚（在身体下层，伸出底缘）——参考图深粉 (235,124,152)
+        # 大脚（身体下层，底部两个深粉大椭圆，伸出底缘）
         p.setBrush(QColor(235, 124, 152))
-        p.drawEllipse(int(66 * s), int(176 * s), int(26 * s), int(16 * s))
-        p.drawEllipse(int(108 * s), int(176 * s), int(26 * s), int(16 * s))
+        p.drawEllipse(int(42 * s), int(162 * s), int(56 * s), int(34 * s))
+        p.drawEllipse(int(102 * s), int(162 * s), int(56 * s), int(34 * s))
+
+        # 小手（身体两侧浅粉斜椭圆，先画、部分被身体覆盖）
+        p.setBrush(QColor(238, 165, 172))
+        p.save()
+        p.translate(int(30 * s), int(122 * s))
+        p.rotate(-30)
+        p.drawEllipse(int(-14 * s), int(-8 * s), int(28 * s), int(16 * s))
+        p.restore()
+        p.save()
+        p.translate(int(170 * s), int(122 * s))
+        p.rotate(30)
+        p.drawEllipse(int(-14 * s), int(-8 * s), int(28 * s), int(16 * s))
+        p.restore()
 
         # 身体：粉色大圆——参考图浅粉 (240,205,205)
         p.setBrush(QColor(240, 205, 205))
         p.drawEllipse(int(16 * s), int(18 * s), int(168 * s), int(168 * s))
 
-        # 腮红（左右脸颊）
-        p.setBrush(QColor(235, 150, 160, 180))
-        p.drawEllipse(int(42 * s), int(106 * s), int(16 * s), int(10 * s))
-        p.drawEllipse(int(142 * s), int(106 * s), int(16 * s), int(10 * s))
-
-        # 嘴：小椭圆
-        p.setBrush(QColor(225, 105, 135))
-        p.drawEllipse(int(95 * s), int(110 * s), int(10 * s), int(6 * s))
+        # 嘴：随鼠标距离张合（越近越大），中心 (100,122)
+        mo = max(0.0, min(self._mouth_open, 1.0))
+        mw = (12.0 + 12.0 * mo) * s   # 宽 12 -> 24
+        mh = (8.0 + 16.0 * mo) * s    # 高 8 -> 24
+        r = int(225 - 45 * mo)
+        g = int(105 - 55 * mo)
+        b = int(135 - 40 * mo)
+        p.setBrush(QColor(r, g, b))
+        p.drawEllipse(int((100.0 * s) - mw / 2), int((122.0 * s) - mh / 2), int(mw), int(mh))
 
         off = self._eye_offset  # 眼珠偏移（跟随鼠标，最大 ~4px）
         blink = 1 <= self._blink_tick <= 3  # 眨眼状态机：每周期开头 3 拍闭眼
         if blink:
             # 眨眼：闭眼横条（深粉）
             p.setBrush(QColor(225, 105, 135))
-            p.drawRoundedRect(int(52 * s), int(75 * s), int(30 * s), int(6 * s), 3, 3)
-            p.drawRoundedRect(int(118 * s), int(75 * s), int(30 * s), int(6 * s), 3, 3)
+            p.drawRoundedRect(int(43 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
+            p.drawRoundedRect(int(127 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
         else:
-            # 大眼睛：黑色眼珠（跟随鼠标偏移）
-            er = 15.0 * s  # 眼珠半径
-            eye_l = (67.0 + off.x(), 78.0 + off.y())  # 左眼中心
-            eye_r = (133.0 + off.x(), 78.0 + off.y())  # 右眼中心
+            # 竖长黑眼：窄高椭圆（宽 30 高 44）
+            ew, eh = 15.0 * s, 22.0 * s  # 半轴
+            eye_l = (58.0 + off.x(), 70.0 + off.y())  # 左眼中心
+            eye_r = (142.0 + off.x(), 70.0 + off.y())  # 右眼中心
             p.setBrush(QColor(45, 40, 55))
-            p.drawEllipse(int(eye_l[0] * s - er), int(eye_l[1] * s - er), int(2 * er), int(2 * er))
-            p.drawEllipse(int(eye_r[0] * s - er), int(eye_r[1] * s - er), int(2 * er), int(2 * er))
-            # 高光（眼珠左上角）
+            p.drawEllipse(int(eye_l[0] * s - ew), int(eye_l[1] * s - eh), int(2 * ew), int(2 * eh))
+            p.drawEllipse(int(eye_r[0] * s - ew), int(eye_r[1] * s - eh), int(2 * ew), int(2 * eh))
+            # 高光（眼珠上侧偏内白圆）
             p.setBrush(QColor(255, 255, 255))
-            p.drawEllipse(int(59 * s), int(70 * s), int(9 * s), int(9 * s))
-            p.drawEllipse(int(125 * s), int(70 * s), int(9 * s), int(9 * s))
+            p.drawEllipse(int(51 * s), int(60 * s), int(12 * s), int(12 * s))
+            p.drawEllipse(int(135 * s), int(60 * s), int(12 * s), int(12 * s))
 
         p.end()
         self.label.setPixmap(pix)
