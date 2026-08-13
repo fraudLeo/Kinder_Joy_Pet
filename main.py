@@ -181,6 +181,25 @@ def main() -> int:
         nonlocal search_window
         search_window = None
 
+    web_search_window = None  # 网页搜索窗口（单实例）
+
+    def open_web_search():
+        nonlocal web_search_window
+        from app.web_search import WebSearchDialog
+        from PyQt6.QtCore import Qt as _Qt
+
+        if web_search_window is None:
+            web_search_window = WebSearchDialog()
+            web_search_window.setAttribute(_Qt.WidgetAttribute.WA_DeleteOnClose)
+            web_search_window.destroyed.connect(clear_web_search_window)
+        web_search_window.show()
+        web_search_window.raise_()
+        web_search_window.input_edit.setFocus()
+
+    def clear_web_search_window():
+        nonlocal web_search_window
+        web_search_window = None
+
     token_popups = []  # 非模态弹窗持有引用，防止被 GC 销毁
 
     def show_token_status():
@@ -279,6 +298,7 @@ def main() -> int:
         callbacks={
             "launcher_items": launcher_items,
             "open_search": open_search,
+            "open_web_search": open_web_search,
             "token_status": show_token_status,
             "open_note": open_note,
             "open_log": show_log,

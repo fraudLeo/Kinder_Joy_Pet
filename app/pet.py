@@ -232,6 +232,7 @@ class DesktopPet(QWidget):
 
         menu.addSeparator()
         self._add_cb_action(menu, "open_search", "搜文件")
+        self._add_cb_action(menu, "open_web_search", "网页搜索")
         self._add_cb_action(menu, "token_status", "Token 余量")
         self._add_cb_action(menu, "open_note", "便利签")
         self._add_cb_action(menu, "open_log", "日志")
