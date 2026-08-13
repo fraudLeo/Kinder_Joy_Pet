@@ -1,9 +1,0 @@
-﻿{
-  "pet_size": 200,
-  "gif_path": "",
-  "token_check_interval_sec": 300,
-  "token_warn_percent": 20,
-  "providers": {},
-  "launcher": {},
-  "note_folders": {}
-}

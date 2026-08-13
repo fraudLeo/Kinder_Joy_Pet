@@ -1,0 +1,14 @@
+{
+  "pet_size": 200,
+  "gif_path": "",
+  "token_check_interval_sec": 300,
+  "token_warn_percent": 20,
+  "providers": {
+    "deepseek": { "api_key": "" },
+    "openrouter": { "api_key": "" },
+    "moonshot": { "api_key": "" }
+  },
+  "launcher": {},
+  "note_folders": {},
+  "everything_es_path": "D:\\OtherSoftWare\\search\\Everything\\es.exe"
+}

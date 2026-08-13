@@ -1,0 +1,25 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ===== 配置与密钥（含 API Key 与本地路径，不提交）=====
+config.json
+config.local.json
+.env*
+*.pem
+*.key
+*.pfx
+*.p12
+
+# ===== 日志 =====
+logs/
+crash.log
+*.log
+
+# ===== IDE（PyCharm 等）=====
+.idea/
+*.iml
+.vscode/
