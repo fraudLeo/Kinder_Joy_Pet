@@ -3,6 +3,7 @@
 功能入口通过 callbacks 注入，避免与具体业务模块强耦合。
 """
 import math
+import re
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, QPoint, QPointF
@@ -50,6 +51,7 @@ class DesktopPet(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAcceptDrops(True)  # 接受拖放 URL：扔链接到卡比上直接打开网页
         self.setWindowTitle("super Kindar")
 
         size = int(self.config.get("pet_size", 100))
@@ -71,11 +73,9 @@ class DesktopPet(QWidget):
             self.movie = None
             self._eye_offset = QPointF(0.0, 0.0)
             self._mouth_open = 0.0  # 张嘴程度 0~1（鼠标越近越大）
-            self._blink_tick = 0  # 眨眼状态机：0=睁眼，1..3=眨眼过程
-            self._timer = QTimer(self)  # 眨眼 tick（100ms，3 秒一周期）
-            self._timer.timeout.connect(self._tick_blink)
-            self._timer.start(100)
-            self._follow_timer = QTimer(self)  # 眼球跟随鼠标
+            self._blink_tick = 0  # 保留字段（眼睛已固定眯眼状态，不再眨眼切换）
+            # 眨眼计时器已停用：眼睛固定为闭眼横线，不再切换
+            self._follow_timer = QTimer(self)  # 张嘴跟随鼠标
             self._follow_timer.timeout.connect(self._update_eye_follow)
             self._follow_timer.start(33)  # ~30fps
             self._draw_placeholder()
@@ -163,25 +163,10 @@ class DesktopPet(QWidget):
         p.setBrush(QColor(r, g, b))
         p.drawEllipse(int((100.0 * s) - mw / 2), int((122.0 * s) - mh / 2), int(mw), int(mh))
 
-        off = self._eye_offset  # 眼珠偏移（跟随鼠标，最大 ~4px）
-        blink = 1 <= self._blink_tick <= 3  # 眨眼状态机：每周期开头 3 拍闭眼
-        if blink:
-            # 眨眼：闭眼横条（深粉）
-            p.setBrush(QColor(225, 105, 135))
-            p.drawRoundedRect(int(43 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
-            p.drawRoundedRect(int(127 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
-        else:
-            # 竖长黑眼：窄高椭圆（宽 30 高 44）
-            ew, eh = 15.0 * s, 22.0 * s  # 半轴
-            eye_l = (58.0 + off.x(), 70.0 + off.y())  # 左眼中心
-            eye_r = (142.0 + off.x(), 70.0 + off.y())  # 右眼中心
-            p.setBrush(QColor(45, 40, 55))
-            p.drawEllipse(int(eye_l[0] * s - ew), int(eye_l[1] * s - eh), int(2 * ew), int(2 * eh))
-            p.drawEllipse(int(eye_r[0] * s - ew), int(eye_r[1] * s - eh), int(2 * ew), int(2 * eh))
-            # 高光（眼珠上侧偏内白圆）
-            p.setBrush(QColor(255, 255, 255))
-            p.drawEllipse(int(51 * s), int(60 * s), int(12 * s), int(12 * s))
-            p.drawEllipse(int(135 * s), int(60 * s), int(12 * s), int(12 * s))
+        # 眼睛：固定闭眼横线（眯眼状态，不做睁闭切换）
+        p.setBrush(QColor(225, 105, 135))
+        p.drawRoundedRect(int(43 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
+        p.drawRoundedRect(int(127 * s), int(66 * s), int(30 * s), int(6 * s), 3, 3)
 
         p.end()
         self.label.setPixmap(pix)
@@ -211,6 +196,39 @@ class DesktopPet(QWidget):
         fn = self.callbacks.get("on_moved")
         if fn is not None:
             fn(self.geometry())
+
+    # ---------- 拖放 URL ----------
+    @staticmethod
+    def _extract_url(mime) -> str | None:
+        """从拖放的 MIME 数据中提取第一个 http(s) 链接。"""
+        if mime.hasUrls():
+            for u in mime.urls():
+                s = u.toString()
+                if s.startswith(("http://", "https://")):
+                    return s
+        text = mime.text() or ""
+        match = re.search(r"https?://\S+", text)
+        if match:
+            return match.group(0).rstrip(".,;!?)'\"]")
+        return None
+
+    def dragEnterEvent(self, event) -> None:
+        if self._extract_url(event.mimeData()):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragLeaveEvent(self, event) -> None:
+        event.accept()
+
+    def dropEvent(self, event) -> None:
+        url = self._extract_url(event.mimeData())
+        if url:
+            fn = self.callbacks.get("open_web_url")
+            if fn is not None:
+                fn(url)
+            log.info("拖放打开链接: %s", url)
+        event.acceptProposedAction()
 
     # ---------- 菜单 ----------
     def contextMenuEvent(self, event) -> None:

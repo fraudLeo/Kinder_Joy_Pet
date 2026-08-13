@@ -1,58 +1,43 @@
-# DeskPet 桌宠 —— dev 集成分支
+# DeskPet 桌宠 —— 网页搜索功能
 
-Windows 桌面宠物（PyQt6）：卡比形象、Everything 全局搜索、Token 余量监控、便利签、消息气泡、快捷启动、实时日志。
+本分支（f4）负责**网页搜索功能**：输入关键字拼入搜索引擎 URL 打开浏览器，以及拖放链接到桌宠直接跳转网页。
 
-## 功能一览
+## 功能
 
-- 🎈 **卡比形象**：粉球身体、小手、大脚、竖长黑眼、眨眼动画
-- 👀 **互动**：眼球跟随鼠标、越近嘴张越大
-- 🔍 **Everything 全局搜索**：右键菜单「搜文件」，秒级搜索 + 表格结果（名称/路径/大小/修改时间）+ 双击打开
-- 🔋 **Token 余量**：DeepSeek / OpenRouter / Kimi 多厂商余额 + 阈值预警
-- 📝 **便利签**：文件夹 + 笔记 + 重命名
-- 💬 **消息气泡**：果冻动画，跟随桌宠（模拟源演示）
-- 🚀 **快捷启动**、📋 **实时日志**、单实例锁
+### 1. 关键字网页搜索
 
-## 开发流程（Git Flow）
+右键桌宠 → 「网页搜索」→ 输入关键字 → 选择引擎 → 回车（或点击搜索）→ 系统默认浏览器（Edge/Chrome）打开搜索结果页。
 
-```
-dev（集成分支，稳定可运行）
- │
- ├── 从 dev 拉最新
- │     git checkout dev && git pull
- │
- ├── 创建功能分支开发
- │     git checkout -b feature/xxx
- │
- ├── 功能分支上修改 + 测试
- │
- └── 测试无误后合并回 dev
-       git checkout dev && git merge feature/xxx
-```
+- 三引擎可切换：**百度**、**Google**、**Bing**
+- 关键字经 URL 编码（`quote_plus`），中文/特殊字符不会乱码
+- 搜索窗口为非模态单实例，粉色系风格，不遮挡桌宠操作
 
-### 约定
+### 2. 拖放 URL 直接跳转
 
-| 项 | 约定 |
-|---|---|
-| 集成分支 | `dev`（所有人从这里拉取） |
-| 功能分支 | `feature/功能名`（如 `feature/search`、`feature/pet-appearance`） |
-| 合并时机 | 功能分支自测通过后合并到 `dev`，不进 `master` |
-| 协作方式 | 成员从 `dev` 拉取最新，在自己的功能分支上开发，互不干扰 |
-| 本地配置 | `config.json` 已被 gitignore，分支切换不会影响本地密钥/路径配置 |
+把网页链接拖到桌宠（卡比）身上松手 → 自动用默认浏览器打开该网页。
 
-## 形象修改位置
+- 支持从浏览器地址栏拖出的链接（`text/uri-list`）
+- 支持聊天软件/文档中的链接文本（自动从文本中提取 `http(s)://` 开头的 URL）
+- 安全边界：只接受 `http://` / `https://`，`file://` 等本地协议一律忽略
+
+## 实现位置
 
 | 内容 | 位置 |
 |---|---|
-| 形象绘制 | `app/pet.py` → `_draw_placeholder`（200px 基准坐标 + 缩放） |
-| 眼球跟随 | `app/pet.py` → `_compute_eye_offset` / `_update_eye_follow` |
-| 张嘴程度 | `app/pet.py` → `_mouth_target`（near=60 / far=350） |
-| 眨眼状态机 | `app/pet.py` → `_tick_blink`（100ms 一拍，30 拍一周期） |
+| 引擎 URL 模板 | `app/web_search.py` → `SEARCH_ENGINES`（新增引擎加一行模板即可） |
+| URL 拼接 | `app/web_search.py` → `build_url`（`{kw}` 占位 + `quote_plus` 编码） |
+| 搜索/打开链接 | `app/web_search.py` → `open_search` / `open_url`（`webbrowser.open`） |
+| 搜索窗口 | `app/web_search.py` → `WebSearchDialog`（输入框 + 引擎下拉 + 搜索按钮） |
+| 拖放事件 | `app/pet.py` → `dragEnterEvent` / `dropEvent` / `_extract_url`（MIME 解析） |
+| 菜单与入口 | `app/pet.py` 菜单「网页搜索」；`main.py` → `open_web_search` / `open_web_url` |
 
-## 运行
+## 技术要点
 
-```powershell
-pip install -r requirements.txt
-python main.py
+```
+关键字 ──quote_plus──► URL 模板 ──► webbrowser.open ──► 默认浏览器
+拖放链接 ──MIME 解析──► http(s) 校验 ──► 同上
 ```
 
-依赖：PyQt6、requests；Everything 搜索需 Everything 运行 + `lib/es.exe`。
+- 拖放解析：优先 `mimeData.hasUrls()`，回退到文本正则提取 `https?://\S+`
+- 新增搜索引擎：在 `SEARCH_ENGINES` 表加一行，如
+  `"搜狗": "https://www.sogou.com/web?query={kw}"`

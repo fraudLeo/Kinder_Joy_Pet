@@ -200,6 +200,12 @@ def main() -> int:
         nonlocal web_search_window
         web_search_window = None
 
+    def open_web_url(url: str):
+        # 拖放链接到桌宠 → 浏览器打开
+        from app.web_search import open_url
+
+        open_url(url)
+
     token_popups = []  # 非模态弹窗持有引用，防止被 GC 销毁
 
     def show_token_status():
@@ -299,6 +305,7 @@ def main() -> int:
             "launcher_items": launcher_items,
             "open_search": open_search,
             "open_web_search": open_web_search,
+            "open_web_url": open_web_url,
             "token_status": show_token_status,
             "open_note": open_note,
             "open_log": show_log,

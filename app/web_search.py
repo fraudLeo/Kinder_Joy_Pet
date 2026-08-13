@@ -41,6 +41,12 @@ def open_search(keyword: str, engine: str = "百度") -> None:
     webbrowser.open(url)
 
 
+def open_url(url: str) -> None:
+    """直接打开 URL（拖放到桌宠的链接）。"""
+    log.info("打开链接: %s", url)
+    webbrowser.open(url)
+
+
 class WebSearchDialog(QDialog):
     """网页搜索窗口：输入关键字，选择引擎，回车/点击在浏览器中搜索（非模态）。"""
 
