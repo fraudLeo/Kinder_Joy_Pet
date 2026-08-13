@@ -1,0 +1,157 @@
+2026-08-13 09:55:49 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 09:56:05 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 09:56:05 [INFO] app.sticky_note: 便利签 nhist 已保存
+2026-08-13 10:00:05 [INFO] main: 桌宠启动
+2026-08-13 10:00:05 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 10:00:05 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:00:05 [INFO] main: 桌宠主窗口已显示
+2026-08-13 10:00:05 [INFO] app.token_monitor: Token 监控启动，轮询间隔 300 秒
+2026-08-13 10:02:47 [INFO] app.sticky_note: 便利签 n1786586452167 已保存
+2026-08-13 10:05:05 [INFO] app.sticky_note: 新建笔记
+2026-08-13 10:05:49 [INFO] app.sticky_note: 新建笔记
+2026-08-13 10:06:05 [INFO] app.sticky_note: 新建笔记
+2026-08-13 10:06:17 [INFO] app.sticky_note: 新建笔记
+2026-08-13 10:06:26 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:06:26 [INFO] app.sticky_note: 新建笔记
+2026-08-13 10:15:40 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:15:49 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:15:50 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:16:02 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:16:02 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:16:02 [INFO] app.bubbles: 气泡消息 [老板] 方案明天给我
+2026-08-13 10:16:03 [INFO] app.bubbles: 气泡消息 [产品群] 新需求
+2026-08-13 10:22:10 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:22:10 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:22:10 [INFO] app.bubbles: 气泡消息 [老板] 方案明天给我
+2026-08-13 10:22:11 [INFO] app.bubbles: 气泡消息 [产品群] 新需求
+2026-08-13 10:22:11 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗
+2026-08-13 10:22:11 [INFO] app.bubbles: 气泡消息 [超时] 这条会消失
+2026-08-13 10:22:30 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:22:30 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:22:30 [INFO] app.bubbles: 气泡消息 [老板] 方案明天给我
+2026-08-13 10:22:31 [INFO] app.bubbles: 气泡消息 [产品群] 新需求
+2026-08-13 10:22:31 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗
+2026-08-13 10:22:31 [INFO] app.bubbles: 气泡消息 [超时] 这条会消失
+2026-08-13 10:22:32 [INFO] app.bubbles: 气泡消息 [A] x
+2026-08-13 10:22:32 [INFO] app.bubbles: 气泡消息 [B] y
+2026-08-13 10:22:40 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:22:41 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:22:41 [INFO] app.bubbles: 气泡消息 [老板] 方案明天给我
+2026-08-13 10:22:41 [INFO] app.bubbles: 气泡消息 [产品群] 新需求
+2026-08-13 10:22:41 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗
+2026-08-13 10:22:42 [INFO] app.bubbles: 气泡消息 [超时] 这条会消失
+2026-08-13 10:22:43 [INFO] app.bubbles: 气泡消息 [A] x
+2026-08-13 10:22:43 [INFO] app.bubbles: 气泡消息 [B] y
+2026-08-13 10:22:44 [INFO] app.bubbles: 气泡消息 [老板] 代码记得提交
+2026-08-13 10:22:44 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:22:44 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:22:56 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 10:22:56 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:22:56 [INFO] app.wechat_monitor: 模拟消息源启动
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [产品群] 新需求：加个导出按钮
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [老板] 吃饭了吗
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [老板] 这个方案明天上午给我，辛苦了
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [文件传输助手] 代码记得提交
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [产品群] 早点休息，别熬太晚
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [李四] 会议改到下午三点
+2026-08-13 10:22:56 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗，出来聚聚
+2026-08-13 10:22:56 [INFO] app.wechat_monitor: 模拟消息源停止
+2026-08-13 10:23:08 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 10:23:08 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:23:08 [INFO] app.wechat_monitor: 模拟消息源启动
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [张三] 这个方案明天上午给我，辛苦了
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [女朋友] 帮忙看下这个 bug，线上报错了
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [文件传输助手] 吃饭了吗
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [张三] 吃饭了吗
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [女朋友] 文档我发你邮箱了
+2026-08-13 10:23:08 [INFO] app.bubbles: 气泡消息 [文件传输助手] 周末有空吗，出来聚聚
+2026-08-13 10:23:09 [INFO] app.bubbles: 气泡消息 [张三] 帮忙看下这个 bug，线上报错了
+2026-08-13 10:23:09 [INFO] app.wechat_monitor: 模拟消息源停止
+2026-08-13 10:23:18 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 10:23:18 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:23:18 [INFO] app.wechat_monitor: 模拟消息源启动
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [文件传输助手] 吃饭了吗
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [张三] 周末有空吗，出来聚聚
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [张三] 帮忙看下这个 bug，线上报错了
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [张三] 文档我发你邮箱了
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [老板] 代码记得提交
+2026-08-13 10:23:18 [INFO] app.bubbles: 气泡消息 [文件传输助手] 代码记得提交
+2026-08-13 10:23:18 [INFO] app.wechat_monitor: 模拟消息源停止
+2026-08-13 10:23:19 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:23:22 [INFO] app.bubbles: 气泡消息 [张三] 你好
+2026-08-13 10:23:22 [INFO] app.bubbles: 气泡消息 [李四] 在吗？
+2026-08-13 10:23:23 [INFO] app.bubbles: 气泡消息 [老板] 方案明天给我
+2026-08-13 10:23:23 [INFO] app.bubbles: 气泡消息 [产品群] 新需求
+2026-08-13 10:23:23 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗
+2026-08-13 10:23:24 [INFO] app.bubbles: 气泡消息 [超时] 这条会消失
+2026-08-13 10:23:25 [INFO] app.bubbles: 气泡消息 [A] x
+2026-08-13 10:23:25 [INFO] app.bubbles: 气泡消息 [B] y
+2026-08-13 10:23:25 [INFO] app.bubbles: 气泡消息 [产品群] 文档我发你邮箱了
+2026-08-13 10:23:25 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 10:23:25 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 12:56:56 [INFO] main: 桌宠启动
+2026-08-13 12:56:57 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 12:56:57 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 12:56:57 [INFO] main: 桌宠主窗口已显示
+2026-08-13 12:56:57 [INFO] app.token_monitor: Token 监控启动，轮询间隔 300 秒
+2026-08-13 12:57:02 [INFO] app.wechat_monitor: 模拟消息源启动
+2026-08-13 12:57:04 [INFO] app.bubbles: 气泡消息 [张三] 周末有空吗，出来聚聚
+2026-08-13 12:57:07 [INFO] app.bubbles: 气泡消息 [女朋友] 代码记得提交
+2026-08-13 12:57:10 [INFO] app.bubbles: 气泡消息 [女朋友] 在吗？
+2026-08-13 12:57:14 [INFO] app.bubbles: 气泡消息 [老板] 这个方案明天上午给我，辛苦了
+2026-08-13 12:57:16 [INFO] app.bubbles: 气泡消息 [李四] 文档我发你邮箱了
+2026-08-13 12:57:19 [INFO] app.bubbles: 气泡消息 [老板] 会议改到下午三点
+2026-08-13 12:57:22 [INFO] app.bubbles: 气泡消息 [文件传输助手] 周末有空吗，出来聚聚
+2026-08-13 12:57:25 [INFO] app.bubbles: 气泡消息 [李四] 会议改到下午三点
+2026-08-13 12:57:28 [INFO] app.bubbles: 气泡消息 [老板] 在吗？
+2026-08-13 12:57:33 [INFO] app.bubbles: 气泡消息 [女朋友] 周末有空吗，出来聚聚
+2026-08-13 12:57:36 [INFO] app.bubbles: 气泡消息 [张三] 这个方案明天上午给我，辛苦了
+2026-08-13 12:57:40 [INFO] app.bubbles: 气泡消息 [老板] 帮忙看下这个 bug，线上报错了
+2026-08-13 12:57:44 [INFO] app.bubbles: 气泡消息 [张三] 哈哈哈笑死
+2026-08-13 12:57:48 [INFO] app.bubbles: 气泡消息 [文件传输助手] 这个方案明天上午给我，辛苦了
+2026-08-13 12:57:52 [INFO] app.bubbles: 气泡消息 [老板] 文档我发你邮箱了
+2026-08-13 12:57:55 [INFO] app.bubbles: 气泡消息 [老板] 帮忙看下这个 bug，线上报错了
+2026-08-13 12:57:58 [INFO] app.bubbles: 气泡消息 [张三] 哈哈哈笑死
+2026-08-13 12:58:01 [INFO] app.bubbles: 气泡消息 [文件传输助手] 文档我发你邮箱了
+2026-08-13 12:58:04 [INFO] app.bubbles: 气泡消息 [张三] 帮忙看下这个 bug，线上报错了
+2026-08-13 12:58:06 [INFO] app.bubbles: 气泡消息 [李四] 早点休息，别熬太晚
+2026-08-13 12:58:11 [INFO] app.bubbles: 气泡消息 [产品群] 新需求：加个导出按钮
+2026-08-13 12:58:16 [INFO] app.bubbles: 气泡消息 [女朋友] 文档我发你邮箱了
+2026-08-13 12:58:20 [INFO] app.bubbles: 气泡消息 [文件传输助手] 周末有空吗，出来聚聚
+2026-08-13 12:58:24 [INFO] app.bubbles: 气泡消息 [产品群] 代码记得提交
+2026-08-13 12:58:28 [INFO] app.bubbles: 气泡消息 [老板] 会议改到下午三点
+2026-08-13 12:58:32 [INFO] app.bubbles: 气泡消息 [女朋友] 新需求：加个导出按钮
+2026-08-13 12:58:43 [INFO] main: 桌宠启动
+2026-08-13 12:58:43 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 12:58:43 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 12:58:43 [INFO] main: 桌宠主窗口已显示
+2026-08-13 12:58:43 [INFO] app.token_monitor: Token 监控启动，轮询间隔 300 秒
+2026-08-13 12:59:04 [INFO] main: 桌宠启动
+2026-08-13 12:59:04 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 12:59:04 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 12:59:05 [INFO] main: 桌宠主窗口已显示
+2026-08-13 12:59:05 [INFO] app.token_monitor: Token 监控启动，轮询间隔 300 秒
+2026-08-13 12:59:06 [INFO] app.wechat_monitor: 模拟消息源启动
+2026-08-13 12:59:10 [INFO] app.bubbles: 气泡消息 [老板] 收到，谢谢！
+2026-08-13 12:59:15 [INFO] app.bubbles: 气泡消息 [文件传输助手] 在吗？
+2026-08-13 12:59:18 [INFO] app.bubbles: 气泡消息 [女朋友] 在吗？
+2026-08-13 12:59:21 [INFO] app.bubbles: 气泡消息 [产品群] 在吗？
+2026-08-13 12:59:24 [INFO] app.bubbles: 气泡消息 [张三] 帮忙看下这个 bug，线上报错了
+2026-08-13 12:59:27 [INFO] app.bubbles: 气泡消息 [张三] 早点休息，别熬太晚
+2026-08-13 12:59:30 [INFO] app.bubbles: 气泡消息 [老板] 帮忙看下这个 bug，线上报错了
+2026-08-13 12:59:33 [INFO] app.bubbles: 气泡消息 [李四] 这个方案明天上午给我，辛苦了
+2026-08-13 12:59:36 [INFO] app.bubbles: 气泡消息 [女朋友] 这个方案明天上午给我，辛苦了
+2026-08-13 12:59:37 [INFO] app.pet: 桌宠退出
+2026-08-13 13:01:04 [INFO] test: NEW_LOG_LINE_1
+2026-08-13 13:01:06 [INFO] test: PAUSED_LOG_LINE
+2026-08-13 13:01:08 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 13:01:08 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 13:01:21 [INFO] test: NEW_LOG_LINE_1
+2026-08-13 13:01:22 [INFO] test: PAUSED_LOG_LINE
+2026-08-13 13:01:25 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 13:01:25 [INFO] app.pet: 未配置 GIF，使用内置占位动画
+2026-08-13 13:01:48 [INFO] test: NEW_LOG_LINE_1
+2026-08-13 13:01:49 [INFO] test: PAUSED_LOG_LINE
+2026-08-13 13:01:52 [ERROR] config: 配置加载失败，使用默认配置: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
+2026-08-13 13:01:52 [INFO] app.pet: 未配置 GIF，使用内置占位动画
