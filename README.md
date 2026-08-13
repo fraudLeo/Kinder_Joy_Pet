@@ -1,62 +1,43 @@
-# DeskPet 桌宠
+# DeskPet 桌宠 —— 网页搜索功能
 
-Windows 桌面宠物。本项目的核心方向是 **Everything 功能扩展**：把本地文件秒级搜索能力接入桌宠，实现"搜文件 → 一键打开"的快捷体验，同时保留桌宠的常用功能。
+本分支（f4）负责**网页搜索功能**：输入关键字拼入搜索引擎 URL 打开浏览器，以及拖放链接到桌宠直接跳转网页。
 
-## 🚀 Everything 功能扩展（核心方向）
+## 功能
 
-本仓库用于开发桌宠与 [Everything](https://www.voidtools.com/)（Windows 本地文件秒搜工具）的集成扩展。
+### 1. 关键字网页搜索
 
-### 原理
+右键桌宠 → 「网页搜索」→ 输入关键字 → 选择引擎 → 回车（或点击搜索）→ 系统默认浏览器（Edge/Chrome）打开搜索结果页。
 
-Everything 平时把 NTFS 文件名维护成内存索引（读 MFT 建索引 + 监听 USN Journal 增量更新），搜索只是内存过滤。桌宠通过其命令行接口（`es.exe`）或 HTTP 服务器接口查询，即可获得毫秒级全盘文件搜索。
+- 三引擎可切换：**百度**、**Google**、**Bing**
+- 关键字经 URL 编码（`quote_plus`），中文/特殊字符不会乱码
+- 搜索窗口为非模态单实例，粉色系风格，不遮挡桌宠操作
 
-### 依赖
+### 2. 拖放 URL 直接跳转
 
-| 组件 | 状态 | 说明 |
-|---|---|---|
-| Everything | ✅ 已安装 | `D:\OtherSoftWare\search\Everything\Everything.exe`（1.4.1），需保持运行 |
-| `es.exe`（命令行版） | ⏳ 待放置 | 官方下载：`https://www.voidtools.com/downloads/` → ES 命令行版，解压后放至 Everything 目录 |
-| HTTP 服务器接口 | 🔀 备选 | Everything 选项 → HTTP 服务器（`allow_http_server=1` 已允许，需手动启用并重启） |
+把网页链接拖到桌宠（卡比）身上松手 → 自动用默认浏览器打开该网页。
 
-### 规划功能
+- 支持从浏览器地址栏拖出的链接（`text/uri-list`）
+- 支持聊天软件/文档中的链接文本（自动从文本中提取 `http(s)://` 开头的 URL）
+- 安全边界：只接受 `http://` / `https://`，`file://` 等本地协议一律忽略
 
-- [ ] 桌宠右键菜单「搜文件」入口
-- [ ] 关键字秒级搜索（调 `es.exe`，结果以完整路径返回）
-- [ ] 结果列表窗口（非模态，双击/回车用默认程序打开）
-- [ ] 与「快捷启动」联动（搜索即打开）
-- [ ] 搜索历史与常用文件置顶
+## 实现位置
 
-## 🐾 桌宠已有功能
+| 内容 | 位置 |
+|---|---|
+| 引擎 URL 模板 | `app/web_search.py` → `SEARCH_ENGINES`（新增引擎加一行模板即可） |
+| URL 拼接 | `app/web_search.py` → `build_url`（`{kw}` 占位 + `quote_plus` 编码） |
+| 搜索/打开链接 | `app/web_search.py` → `open_search` / `open_url`（`webbrowser.open`） |
+| 搜索窗口 | `app/web_search.py` → `WebSearchDialog`（输入框 + 引擎下拉 + 搜索按钮） |
+| 拖放事件 | `app/pet.py` → `dragEnterEvent` / `dropEvent` / `_extract_url`（MIME 解析） |
+| 菜单与入口 | `app/pet.py` 菜单「网页搜索」；`main.py` → `open_web_search` / `open_web_url` |
 
-- **卡比形象**：程序化绘制（粉色圆球、大眼跟随鼠标、眨眼动画）
-- **消息气泡**：微信消息提醒演示（模拟源），果冻弹性上浮、跟随桌宠
-- **Token 余量监控**：DeepSeek / OpenRouter / Kimi 多厂商余额 + 阈值预警
-- **便利签**：左侧文件夹 + 右侧笔记，支持重命名、持久化
-- **快捷启动**：右键菜单一键打开指定应用
-- **实时日志**：非模态查看器，自动刷新，单实例
-
-## 运行
-
-```powershell
-cd deskpet
-pip install -r requirements.txt
-python main.py
-```
-
-## 项目结构
+## 技术要点
 
 ```
-deskpet/
-├── main.py               # 入口：装配各模块
-├── config.json           # 配置（含 everything_es_path 预留）
-└── app/
-    ├── pet.py            # 桌宠主窗口（卡比动画/拖拽/菜单/托盘）
-    ├── bubbles.py        # 消息气泡
-    ├── wechat_monitor.py # 消息源（DummySource / WcferrySource 骨架）
-    ├── token_monitor.py  # 余额轮询 + 预警
-    ├── providers/        # 余额厂商插件
-    ├── launcher.py       # 快捷启动
-    ├── sticky_note.py    # 便利签
-    ├── settings.py       # 设置对话框
-    └── logger.py         # 日志系统
+关键字 ──quote_plus──► URL 模板 ──► webbrowser.open ──► 默认浏览器
+拖放链接 ──MIME 解析──► http(s) 校验 ──► 同上
 ```
+
+- 拖放解析：优先 `mimeData.hasUrls()`，回退到文本正则提取 `https?://\S+`
+- 新增搜索引擎：在 `SEARCH_ENGINES` 表加一行，如
+  `"搜狗": "https://www.sogou.com/web?query={kw}"`

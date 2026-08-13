@@ -1,3 +1,8 @@
+# ===== 日志 =====
+logs/
+crash.log
+*.log
+
 # ===== Python =====
 __pycache__/
 *.py[cod]
@@ -13,11 +18,6 @@ config.local.json
 *.key
 *.pfx
 *.p12
-
-# ===== 日志 =====
-logs/
-crash.log
-*.log
 
 # ===== IDE（PyCharm 等）=====
 .idea/

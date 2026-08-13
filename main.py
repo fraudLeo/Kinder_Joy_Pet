@@ -23,21 +23,49 @@ DEFAULT_CONFIG = {
 }
 
 
+def _read_json(path: Path) -> dict:
+    """读取 JSON 文件，失败返回空 dict。"""
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError) as exc:
+        get_logger("config").error("配置读取失败 %s: %s", path, exc)
+        return {}
+
+
+def _target_config_path(config: dict) -> Path:
+    """确定实际写入的配置文件：指针指向的外部文件优先，否则仓库内 config.json。"""
+    ext = (config or {}).get("config_path")
+    if ext:
+        return Path(ext)
+    return CONFIG_PATH
+
+
 def load_config() -> dict:
-    if CONFIG_PATH.exists():
-        try:
-            # utf-8-sig 兼容带 BOM 的文件（旧版 PowerShell 写入可能带 BOM）
-            data = json.loads(CONFIG_PATH.read_text(encoding="utf-8-sig"))
+    """加载配置。仓库内 config.json 可以是指针（{"config_path": "..."}），
+    指向仓库外的真实配置文件（git 管理不到，切换分支/IDE 操作都不会丢失）。
+    优先级：外部文件 > 仓库内 config.json 本身 > 默认配置。
+    """
+    local = _read_json(CONFIG_PATH) if CONFIG_PATH.exists() else {}
+    ext_path = local.get("config_path")
+    if ext_path:
+        ext_file = Path(ext_path)
+        if ext_file.exists():
+            data = _read_json(ext_file)
             merged = dict(DEFAULT_CONFIG)
             merged.update(data)
+            if not merged.get("config_path"):  # 记录实际来源，供保存时写回外部
+                merged["config_path"] = ext_path
             return merged
-        except (json.JSONDecodeError, OSError) as exc:
-            get_logger("config").error("配置加载失败，使用默认配置: %s", exc)
-    return dict(DEFAULT_CONFIG)
+        get_logger("config").warning("config_path 指向的外部配置不存在: %s，使用本地配置", ext_path)
+    merged = dict(DEFAULT_CONFIG)
+    merged.update(local)
+    return merged
 
 
 def save_config(config: dict) -> None:
-    CONFIG_PATH.write_text(
+    """保存配置：有外部指针时写外部文件，否则写仓库内 config.json。"""
+    target = _target_config_path(config)
+    target.write_text(
         json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
@@ -153,6 +181,31 @@ def main() -> int:
         nonlocal search_window
         search_window = None
 
+    web_search_window = None  # 网页搜索窗口（单实例）
+
+    def open_web_search():
+        nonlocal web_search_window
+        from app.web_search import WebSearchDialog
+        from PyQt6.QtCore import Qt as _Qt
+
+        if web_search_window is None:
+            web_search_window = WebSearchDialog()
+            web_search_window.setAttribute(_Qt.WidgetAttribute.WA_DeleteOnClose)
+            web_search_window.destroyed.connect(clear_web_search_window)
+        web_search_window.show()
+        web_search_window.raise_()
+        web_search_window.input_edit.setFocus()
+
+    def clear_web_search_window():
+        nonlocal web_search_window
+        web_search_window = None
+
+    def open_web_url(url: str):
+        # 拖放链接到桌宠 → 浏览器打开
+        from app.web_search import open_url
+
+        open_url(url)
+
     token_popups = []  # 非模态弹窗持有引用，防止被 GC 销毁
 
     def show_token_status():
@@ -251,6 +304,8 @@ def main() -> int:
         callbacks={
             "launcher_items": launcher_items,
             "open_search": open_search,
+            "open_web_search": open_web_search,
+            "open_web_url": open_web_url,
             "token_status": show_token_status,
             "open_note": open_note,
             "open_log": show_log,
