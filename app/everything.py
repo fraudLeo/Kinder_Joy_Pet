@@ -6,6 +6,7 @@
 """
 import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from .logger import get_logger
 log = get_logger(__name__)
 
 ES_PATH = Path(__file__).resolve().parent.parent / "lib" / "es.exe"
+if getattr(sys, "frozen", False):  # PyInstaller：es.exe 随包内置在临时解包目录
+    ES_PATH = Path(getattr(sys, "_MEIPASS", str(Path(sys.executable).parent))) / "lib" / "es.exe"
 
 
 def search(keyword: str, max_results: int = 100) -> tuple[list[str], str | None]:

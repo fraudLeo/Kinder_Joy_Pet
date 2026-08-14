@@ -93,6 +93,14 @@ class TokenMonitor(QObject):
             return "正在查询余额…（刚配置的 Key 已触发查询，请稍候）"
         return "未配置 Token 厂商（设置中填写 API Key）"
 
+    def menu_text(self) -> str:
+        """托盘信息区文本：API Token 余额：{数值}；无数据显示 --。"""
+        for key in sorted(self.results):
+            info = self.results[key]
+            if not info.error and info.remaining is not None:
+                return f"API Token 余额：{info.remaining:.2f}{info.currency}"
+        return "API Token 余额：--"
+
     # ---------- 内部 ----------
     def _on_result(self, key: str, info: BalanceInfo) -> None:
         self.results[key] = info

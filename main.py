@@ -10,7 +10,13 @@ from PyQt6.QtWidgets import QApplication
 
 from app.logger import get_logger, setup_logging
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+# 运行目录：源码运行 = 项目目录；PyInstaller 打包运行 = exe 所在目录
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+
+CONFIG_PATH = BASE_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "pet_size": 200,
@@ -88,7 +94,7 @@ def main() -> int:
 
     sys.excepthook = _excepthook
 
-    crash_log = Path(__file__).resolve().parent / "logs" / "crash.log"
+    crash_log = BASE_DIR / "logs" / "crash.log"
     crash_log.parent.mkdir(parents=True, exist_ok=True)
     try:
         # Qt 消息处理器：qWarning/qCritical/qFatal（含 ASSERT 文本）逐条 flush 落盘
@@ -286,6 +292,87 @@ def main() -> int:
         else:
             demo_source.stop()
 
+    # ---------- 提醒 / 番茄钟 / 健康提醒 ----------
+    from app.reminder import ReminderManager, Pomodoro, HealthReminders, parse_relative
+
+    reminders = ReminderManager()
+    pomodoro = Pomodoro()
+    health = HealthReminders(reminders)
+
+    def push_bubble(title: str, content: str):
+        bubbles.push_message({"sender": title, "content": content})
+
+    reminders.triggered.connect(push_bubble)
+    pomodoro.finished.connect(push_bubble)
+
+    def pomodoro_toggle():
+        pomodoro.toggle()
+        pet.set_balloon("番茄钟", pomodoro.status_text())
+
+    def add_timed_reminder():
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+
+        text, ok = QInputDialog.getText(
+            None, "定时提醒", "输入提醒内容（支持相对时间，如「3分钟后喝水」）："
+        )
+        text = text.strip() if ok else ""
+        if not text:
+            return
+        secs = parse_relative(text)
+        if secs:
+            reminders.add("提醒", text, secs)
+            pet.set_balloon("提醒", f"已设置：{text}（{secs} 秒后提醒）")
+        else:
+            QMessageBox.information(None, "提示", "未能识别时间，请用「3分钟后」「1小时」等格式")
+
+    def toggle_health(name: str, enabled: bool):
+        health.toggle(name, enabled)
+        pet.set_balloon("健康提醒", f"{name}提醒已{'开启' if enabled else '关闭'}")
+
+    def tray_status_text():
+        """托盘信息区实时文本：番茄钟状态 + Token 余额。"""
+        return pomodoro.menu_text(), monitor.menu_text()
+
+    def checkable_remaining(text: str):
+        """健康提醒开关行的剩余倒计时（未开启返回 None）。"""
+        name = text.replace("提醒", "")
+        if name in ("喝水", "休息眼睛", "站起来活动"):
+            return health.remaining_text(name)
+        return None
+
+    def open_dir(path: str):
+        """拖放文件夹 → 资源管理器打开。"""
+        import os
+
+        os.startfile(path)  # noqa: S606 - 打开用户拖放的文件夹
+        log.info("打开文件夹: %s", path)
+
+    def open_file_location(file_path: str):
+        """文本文件路径 → 打开文件所在目录（资源管理器跳转）。"""
+        import os
+
+        parent = str(Path(file_path).parent)
+        os.startfile(parent)  # noqa: S606 - 打开用户文件的所在目录
+        log.info("打开文件所在目录: %s", parent)
+
+    def pick_and_move(file_path: str):
+        """拖文件实体 → 选择目标目录 → 移动过去。"""
+        import shutil
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+
+        target = QFileDialog.getExistingDirectory(
+            None, "选择要添加到的目录", str(Path(file_path).parent)
+        )
+        if not target:
+            return
+        try:
+            dest = Path(target) / Path(file_path).name
+            shutil.move(file_path, str(dest))
+            push_bubble("文件", f"已移动到：{dest}")
+        except Exception as exc:  # noqa: BLE001 - 移动失败给用户提示
+            log.error("文件移动失败 %s: %s", file_path, exc)
+            QMessageBox.warning(None, "移动失败", f"{file_path}\n{exc}")
+
     def save_config_and_refresh():
         save_config(config)
         pet.tray.setToolTip(f"桌宠\n{monitor.status_text()}")
@@ -306,13 +393,22 @@ def main() -> int:
             "open_search": open_search,
             "open_web_search": open_web_search,
             "open_web_url": open_web_url,
+            "open_dir": open_dir,
+            "open_file_location": open_file_location,
+            "pick_and_move": pick_and_move,
             "token_status": show_token_status,
             "open_note": open_note,
             "open_log": show_log,
             "open_settings": show_settings,
+            "pomodoro": pomodoro_toggle,
+            "timed_reminder": add_timed_reminder,
+            "tray_status_text": tray_status_text,
             "on_moved": bubbles.set_anchor,
             "checkable_actions": {
                 "模拟微信消息": (toggle_demo, lambda: demo_running[0]),
+                "喝水提醒": (lambda c: toggle_health("喝水", c), lambda: health.is_enabled("喝水")),
+                "休息眼睛": (lambda c: toggle_health("休息眼睛", c), lambda: health.is_enabled("休息眼睛")),
+                "站起来活动": (lambda c: toggle_health("站起来活动", c), lambda: health.is_enabled("站起来活动")),
             },
         },
     )

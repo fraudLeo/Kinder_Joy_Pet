@@ -1,12 +1,19 @@
 """日志系统：文件滚动日志 + 内存缓冲（供界面实时查看）。"""
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from PyQt6.QtCore import QTimer, QStringListModel
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QListView
 
-LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+# 运行目录：源码运行 = 项目目录；PyInstaller 打包运行 = exe 所在目录
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+LOG_DIR = BASE_DIR / "logs"
 LOG_FILE = LOG_DIR / "deskpet.log"
 
 

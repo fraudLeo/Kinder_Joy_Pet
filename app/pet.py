@@ -3,12 +3,13 @@
 功能入口通过 callbacks 注入，避免与具体业务模块强耦合。
 """
 import math
+import os
 import re
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QTimer, QPoint, QPointF
 from PyQt6.QtGui import QAction, QColor, QIcon, QMovie, QPainter, QPixmap, QCursor
-from PyQt6.QtWidgets import QApplication, QLabel, QMenu, QSystemTrayIcon, QWidget
+from PyQt6.QtWidgets import QApplication, QLabel, QMenu, QSystemTrayIcon, QWidget, QWidgetAction
 
 from .logger import get_logger
 
@@ -29,6 +30,30 @@ def _make_tray_icon() -> QIcon:
     p.drawEllipse(38, 22, 10, 12)
     p.end()
     return QIcon(pix)
+
+
+class _AvatarAction(QWidgetAction):
+    """托盘菜单顶部的桌宠形象缩略图（纯展示，不可点击）。"""
+
+    def __init__(self, pet: QWidget, parent=None):
+        super().__init__(parent)
+        self._pet = pet
+
+    def createWidget(self, parent):
+        label = QLabel(parent)
+        pix = self._pet.label.pixmap()
+        if pix is not None:
+            label.setPixmap(
+                pix.scaled(
+                    36,
+                    36,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setFixedHeight(44)
+        return label
 
 
 class DesktopPet(QWidget):
@@ -197,23 +222,38 @@ class DesktopPet(QWidget):
         if fn is not None:
             fn(self.geometry())
 
-    # ---------- 拖放 URL ----------
+    # ---------- 拖放 ----------
     @staticmethod
-    def _extract_url(mime) -> str | None:
-        """从拖放的 MIME 数据中提取第一个 http(s) 链接。"""
+    def _extract_target(mime) -> tuple[str, str] | None:
+        """从拖放数据提取目标，返回 (类型, 值)：
+        web=网页链接 / dir=文件夹实体 / file=文件实体 /
+        path_dir=文本文件夹路径 / path_file=文本文件路径。
+        实体与文本区分：实体走 file://（拖文件/文件夹），文本走纯文本（复制的路径）。
+        """
         if mime.hasUrls():
             for u in mime.urls():
                 s = u.toString()
                 if s.startswith(("http://", "https://")):
-                    return s
+                    return ("web", s)
+                if s.startswith("file://"):
+                    p = u.toLocalFile()
+                    if os.path.isdir(p):
+                        return ("dir", p)
+                    if os.path.isfile(p):
+                        return ("file", p)
         text = mime.text() or ""
         match = re.search(r"https?://\S+", text)
         if match:
-            return match.group(0).rstrip(".,;!?)'\"]")
+            return ("web", match.group(0).rstrip(".,;!?)'\"]"))
+        t = text.strip().strip('"')
+        if os.path.isdir(t):
+            return ("path_dir", t)
+        if os.path.isfile(t):
+            return ("path_file", t)
         return None
 
     def dragEnterEvent(self, event) -> None:
-        if self._extract_url(event.mimeData()):
+        if self._extract_target(event.mimeData()):
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -222,12 +262,38 @@ class DesktopPet(QWidget):
         event.accept()
 
     def dropEvent(self, event) -> None:
-        url = self._extract_url(event.mimeData())
-        if url:
-            fn = self.callbacks.get("open_web_url")
-            if fn is not None:
-                fn(url)
-            log.info("拖放打开链接: %s", url)
+        target = self._extract_target(event.mimeData())
+        if target:
+            kind, value = target
+            if kind == "web":
+                fn = self.callbacks.get("open_web_url")
+                if fn is not None:
+                    fn(value)
+                log.info("拖放打开链接: %s", value)
+            elif kind == "dir":
+                # 拖文件夹实体 → 打开该文件夹
+                fn = self.callbacks.get("open_dir")
+                if fn is not None:
+                    fn(value)
+                log.info("拖放文件夹实体→打开: %s", value)
+            elif kind == "file":
+                # 拖文件实体 → 选择保存路径（移动）
+                fn = self.callbacks.get("pick_and_move")
+                if fn is not None:
+                    fn(value)
+                log.info("拖放文件实体→选择保存路径: %s", value)
+            elif kind == "path_dir":
+                # 文本文件夹路径 → 打开该文件夹
+                fn = self.callbacks.get("open_dir")
+                if fn is not None:
+                    fn(value)
+                log.info("文本文件夹路径→打开: %s", value)
+            elif kind == "path_file":
+                # 文本文件路径 → 打开所在目录
+                fn = self.callbacks.get("open_file_location")
+                if fn is not None:
+                    fn(value)
+                log.info("文本文件路径→打开所在目录: %s", value)
         event.acceptProposedAction()
 
     # ---------- 菜单 ----------
@@ -249,6 +315,8 @@ class DesktopPet(QWidget):
         menu.addAction(launcher_action)
 
         menu.addSeparator()
+        self._add_cb_action(menu, "pomodoro", "番茄钟")
+        self._add_cb_action(menu, "timed_reminder", "定时提醒")
         self._add_cb_action(menu, "open_search", "搜文件")
         self._add_cb_action(menu, "open_web_search", "网页搜索")
         self._add_cb_action(menu, "token_status", "Token 余量")
@@ -282,17 +350,71 @@ class DesktopPet(QWidget):
         QApplication.instance().quit()
 
     # ---------- 托盘 ----------
+    TRAY_MENU_STYLE = """
+        QMenu {
+            background: #f5f5f5;
+            color: #000000;
+            border: 1px solid #d8d8d8;
+            padding: 4px;
+        }
+        QMenu::item {
+            padding: 6px 20px;
+            border-radius: 4px;
+        }
+        QMenu::item:selected {
+            background: #e2e2e2;
+        }
+        QMenu::item:disabled {
+            color: #000000;  /* 信息区保持黑色文字（不可点击） */
+            padding: 4px 20px;
+        }
+        QMenu::separator {
+            height: 1px;
+            background: #d8d8d8;
+            margin: 4px 8px;
+        }
+    """
+
     def _build_tray(self) -> None:
         self.tray = QSystemTrayIcon(_make_tray_icon(), self)
         self.tray.setToolTip("桌宠")
         tray_menu = QMenu()
-        tray_menu.addAction("显示 / 隐藏", self.toggle_visible)
+        tray_menu.setStyleSheet(self.TRAY_MENU_STYLE)
+
+        # 1) 顶部信息展示区：形象 + 番茄钟状态 + Token 余额（纯展示，不可点击）
+        tray_menu.addAction(_AvatarAction(self, tray_menu))
+        self._pomodoro_action = QAction("🍅 未开始", tray_menu)
+        self._pomodoro_action.setEnabled(False)  # 信息区不可点击
+        self._token_action = QAction("💰 API Token 余额：--", tray_menu)
+        self._token_action.setEnabled(False)
+        tray_menu.addAction(self._pomodoro_action)
+        tray_menu.addAction(self._token_action)
+
+        # 2) 分割线
         tray_menu.addSeparator()
+
+        # 3) 可点击功能菜单项（现有能力保留）
+        tray_menu.addAction("显示 / 隐藏", self.toggle_visible)
         self._add_tray_cb(tray_menu, "open_note", "便利签")
         self._add_tray_cb(tray_menu, "open_log", "日志")
         self._add_tray_cb(tray_menu, "open_settings", "设置")
         tray_menu.addSeparator()
-        tray_menu.addAction("退出", self.quit_app)
+        # 可勾选的开关（健康提醒等，与右键菜单同一组、状态同步）
+        self._tray_checkables: list[tuple] = []
+        for text, (toggle_fn, is_checked_fn) in (self.callbacks.get("checkable_actions") or {}).items():
+            act = QAction(text, tray_menu)
+            act.setCheckable(True)
+            act.setChecked(bool(is_checked_fn()))
+            act.toggled.connect(lambda checked, fn=toggle_fn: fn(checked))
+            tray_menu.addAction(act)
+            self._tray_checkables.append((act, text, is_checked_fn))
+
+        # 4) 分割线
+        tray_menu.addSeparator()
+
+        # 5) 底部操作项
+        tray_menu.addAction("关闭程序", self.quit_app)
+
         self.tray.setContextMenu(tray_menu)
         self.tray.activated.connect(
             lambda reason: self.toggle_visible()
@@ -300,6 +422,26 @@ class DesktopPet(QWidget):
             else None
         )
         self.tray.show()
+
+        # 信息区每秒实时刷新（番茄钟倒计时 + Token 余额）
+        self._tray_info_timer = QTimer(self)
+        self._tray_info_timer.timeout.connect(self._refresh_tray_info)
+        self._tray_info_timer.start(1000)
+
+    def _refresh_tray_info(self) -> None:
+        fn = self.callbacks.get("tray_status_text")
+        if fn is not None:
+            pomo_text, token_text = fn()
+            self._pomodoro_action.setText(f"🍅 {pomo_text}")
+            self._token_action.setText(f"💰 {token_text}")
+        # 健康提醒开关行：显示剩余倒计时（如「喝水提醒 44:32」）
+        rem_fn = self.callbacks.get("checkable_remaining")
+        if rem_fn is not None:
+            for act, text, _is_checked in getattr(self, "_tray_checkables", []):
+                remaining = rem_fn(text)
+                base = text
+                if remaining is not None:
+                    act.setText(f"{base}  {remaining}")
 
     def _add_tray_cb(self, menu: QMenu, key: str, text: str) -> None:
         fn = self.callbacks.get(key)
